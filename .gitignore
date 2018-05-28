@@ -27,5 +27,5 @@ hs_err_pid*
 .idea
 *.iml
 
-kotlin-build
+gossip-springboot/build
 .gradle
