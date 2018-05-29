@@ -16,4 +16,11 @@ class NodesRepository {
         result.addAll(nodesToAdd)
         nodesSet = result
     }
+
+    fun removeNode(node: String) {
+        val newSet = mutableSetOf<String>()
+        newSet.addAll(nodesSet)
+        newSet.remove(node)
+        nodesSet = newSet
+    }
 }

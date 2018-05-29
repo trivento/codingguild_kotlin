@@ -1,26 +1,29 @@
 package hello
 
-import com.fasterxml.jackson.databind.ObjectMapper
-
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
-import org.apache.catalina.manager.StatusTransformer.setContentType
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.http.client.ClientHttpRequestFactory
+import org.springframework.http.client.SimpleClientHttpRequestFactory
 
 
 @Component
 class Scheduler(private val repository: NodesRepository) {
 
-    private val rest: RestTemplate = RestTemplate()
-    private val mapper = ObjectMapper()
+    private fun clientHttpRequestFactory(): ClientHttpRequestFactory {
+        val result = SimpleClientHttpRequestFactory()
+        result.setReadTimeout(2000)
+        result.setConnectTimeout(2000)
+        return result
+    }
+    private val rest: RestTemplate = RestTemplate(clientHttpRequestFactory())
 
-
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedRate = 5000)
     fun gossip() {
         log.info("executing gossip")
 
@@ -33,14 +36,19 @@ class Scheduler(private val repository: NodesRepository) {
         val url = "$node/members"
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_JSON
-        val entity = HttpEntity(mapper.writeValueAsString(repository.nodes()), headers)
-        log.info("Sending gossip to $url, with entity $entity")
-        val response = rest.exchange(url, HttpMethod.POST, entity, String::class.java)
-        if (response.statusCodeValue == 200) {
-            log.info("Gossipped nodes to $node")
-        } else {
-            log.warn("failed to gossip to $node, got response $response")
-            // TODO remove node if it was unreachable
+        try {
+            val entity = HttpEntity(repository.nodes(), headers)
+            log.info("Sending gossip to $url, with entity $entity")
+            val response = rest.exchange(url, HttpMethod.POST, entity, String::class.java)
+            if (response.statusCodeValue == 200) {
+                log.info("Gossipped nodes to $node")
+            } else {
+                log.warn("failed to gossip to $node, got response $response")
+            }
+        } catch (e: Throwable) {
+            log.warn("Failed to communicate with node $node, removing (cause $e)")
+            repository.removeNode(node)
+
         }
     }
 
