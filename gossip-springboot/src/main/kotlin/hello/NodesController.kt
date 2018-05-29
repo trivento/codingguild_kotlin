@@ -22,8 +22,9 @@ class NodesController(private val repository: NodesRepository) {
                 .filter { n ->
                     var validUri = false
                     try {
-                        val uri = URI(n)
-                        validUri = n.endsWith(":${uri.port}")
+                        URI(n) // will throw if not valid
+                        val remoteUri = URI(request.remoteHost)
+                        validUri = n.endsWith(":${remoteUri.port}")
                     } catch (e: Throwable) {
                     }
                     validUri
@@ -37,7 +38,17 @@ class NodesController(private val repository: NodesRepository) {
     @PostMapping("/membersV2")
     fun receiveGossipV2(@RequestBody nodes: NodesV2, request: HttpServletRequest): NodesV2 {
         log.info("Receved gossip $nodes from ${request.remoteHost}")
-        repository.addNodes(nodes.nodes)
+        val nodesToAdd = nodes.nodes.filter { n ->
+            var validUri = false
+            try {
+                val uri = URI(n.uri) // will throw if not valid
+                validUri = uri.port in 1..65536
+            } catch (e: Throwable) {
+            }
+            validUri // && n.uri.contains(request.remoteHost) && n.lastSeen <= System.currentTimeMillis()
+        }
+
+        repository.addNodes(nodesToAdd)
         log.info("all nodes: ${repository.nodesMap.keys}")
         return repository.nodesV2()
     }
