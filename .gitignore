@@ -28,4 +28,6 @@ hs_err_pid*
 *.iml
 
 gossip-springboot/build
+gossip-springboot/out
 .gradle
+
