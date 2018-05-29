@@ -1,7 +1,9 @@
 package hello
 
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -20,7 +22,6 @@ class GossipScheduler(private val repository: NodesRepository) {
         result.setConnectTimeout(2000)
         return result
     }
-
     private val rest: RestTemplate = RestTemplate(clientHttpRequestFactory())
 
     // You can use these headers to make sure that the application/json content type is used
@@ -30,10 +31,28 @@ class GossipScheduler(private val repository: NodesRepository) {
     @Scheduled(fixedRate = 5000)
     fun gossip() {
         log.info("executing gossip")
-        // TODO take 3 random nodes that we know and sent a gossip POST request to them
-        // Optionally we can remove the node if communication failed
 
-        // To execute an http request you can use the method on the RestTemplate, make sure the use the application/json content type
+        val nodes = repository.nodesSet
+        val gossipTo = nodes.toList().shuffled().take(3)
+        gossipTo.forEach(this::executeGossip)
+    }
+
+    fun executeGossip(node: String) {
+        val url = "$node/members"
+        try {
+            val entity = HttpEntity(repository.nodes(), httpHeaders)
+            log.info("Sending gossip to $url, with entity $entity")
+            val response = rest.exchange(url, HttpMethod.POST, entity, String::class.java)
+            if (response.statusCodeValue == 200) {
+                log.info("Gossipped nodes to $node")
+            } else {
+                log.warn("failed to gossip to $node, got response $response")
+            }
+        } catch (e: Throwable) {
+            log.warn("Failed to communicate with node $node, removing (cause $e)")
+            repository.removeNode(node)
+
+        }
     }
 
     companion object {
