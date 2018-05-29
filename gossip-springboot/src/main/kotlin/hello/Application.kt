@@ -6,9 +6,10 @@ import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.runApplication
-import org.springframework.boot.web.server.LocalServerPort
 import org.springframework.context.annotation.Bean
-import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.util.*
+
 
 @SpringBootApplication
 @EnableScheduling
@@ -19,8 +20,13 @@ class Application {
 	@Bean
 	fun init(repository: NodesRepository, @Value("\${server.port}") port: Int, @Value("\${seed}") seed: String) = CommandLineRunner {
 		log.info("Initializing: port = $port")
-        val host = Inet4Address.getLocalHost().getHostAddress()
 
+		val host = Collections.list(NetworkInterface.getNetworkInterfaces())
+				.filter { iface -> !iface.isLoopback && iface.isUp && !iface.isVirtual && !iface.isPointToPoint}
+				.flatMap { Collections.list(it.inetAddresses) }
+                .filter { it.address.size == 4 } // must be ipv4 (4 bytes)
+                .map { it.hostAddress }
+				.firstOrNull() ?: throw Exception("Could not determine host ip")
 		repository.addNodes(listOf("http://$host:$port", seed))
 	}
 
