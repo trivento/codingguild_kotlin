@@ -31,7 +31,11 @@ class Application {
                 .map { it.hostAddress }
 				.firstOrNull() ?: throw Exception("Could not determine host ip")
 
-		repository.addNodes(listOf("http://$host:$port", seed))
+        val now = System.currentTimeMillis()
+        val thisNode = "http://$host:$port"
+		println("TEST $thisNode")
+		repository.addNodes(listOf(NodeV2(thisNode, now), NodeV2(seed, now)))
+        repository.thisNode = thisNode
 	}
 
 }

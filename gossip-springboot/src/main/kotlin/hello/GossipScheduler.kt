@@ -32,7 +32,7 @@ class GossipScheduler(private val repository: NodesRepository) {
     fun gossip() {
         log.info("executing gossip")
 
-        val nodes = repository.nodesSet
+        val nodes = repository.nodesMap.keys
         val gossipTo = nodes.toList().shuffled().take(3)
         gossipTo.forEach(this::executeGossip)
     }

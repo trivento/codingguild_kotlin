@@ -6,21 +6,35 @@ import org.springframework.stereotype.Repository
 class NodesRepository {
 
     // For thread safety we do not mutate the set itself, but rather mutate the variable instead
-    var nodesSet: Set<String> = emptySet()
+    var nodesMap: Map<String, Long> = emptyMap()
 
-    fun nodes(): Nodes = Nodes(nodesSet.toList())
+    fun nodesMapWithSelf(): Map<String, Long> {
+        return nodesMap.plus(Pair(thisNode, System.currentTimeMillis()))
+    }
 
-    fun addNodes(nodesToAdd: List<String>) {
-        val result = mutableSetOf<String>()
-        result.addAll(nodesSet)
-        result.addAll(nodesToAdd)
-        nodesSet = result
+    var thisNode: String = "http//localhost:8081"
+
+    fun nodes(): Nodes = Nodes(nodesMapWithSelf().keys.toList())
+
+    fun nodesV2(): NodesV2 {
+        return NodesV2(nodesMapWithSelf().map { entry ->
+            NodeV2(entry.key, entry.value)
+        })
+    }
+
+    fun addNodes(nodesToAdd: List<NodeV2>) {
+        val result = mutableMapOf<String, Long>()
+        result.putAll(nodesMap)
+        nodesToAdd.forEach{ n ->
+            result[n.uri] = n.lastSeen
+        }
+        nodesMap = result.filterValues { it >= (System.currentTimeMillis() - 30_000) }
     }
 
     fun removeNode(node: String) {
-        val newSet = mutableSetOf<String>()
-        newSet.addAll(nodesSet)
-        newSet.remove(node)
-        nodesSet = newSet
+        val newMap = mutableMapOf<String, Long>()
+        newMap.putAll(nodesMap)
+        newMap.remove(node)
+        nodesMap = newMap
     }
 }
