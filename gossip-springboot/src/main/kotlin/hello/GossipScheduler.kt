@@ -34,7 +34,23 @@ class GossipScheduler(private val repository: NodesRepository) {
 
         val nodes = repository.nodesMap.keys
         val gossipTo = nodes.toList().shuffled().take(3)
-        gossipTo.forEach(this::executeGossip)
+        gossipTo.forEach(this::executeGossipV2)
+    }
+
+    fun executeGossipV2(node: String) {
+        val url = "$node/membersV2"
+        try {
+            val entity = HttpEntity(repository.nodesV2(), httpHeaders)
+            log.info("Sending gossip to $url, with entity $entity")
+            val response = rest.exchange(url, HttpMethod.POST, entity, String::class.java)
+            if (response.statusCodeValue == 200) {
+                log.info("Gossipped nodes to $node")
+            } else {
+                log.warn("failed to gossip to $node, got response $response")
+            }
+        } catch (e: Throwable) {
+            executeGossip(node)
+        }
     }
 
     fun executeGossip(node: String) {
