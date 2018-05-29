@@ -18,16 +18,21 @@ class Application {
 	private val log = LoggerFactory.getLogger(Application::class.java)
 
 	@Bean
-	fun init(repository: NodesRepository, @Value("\${server.port}") port: Int, @Value("\${seed}") seed: String) = CommandLineRunner {
+	fun init(repository: NodesRepository,
+			 @Value("\${server.port}") port: Int,
+			 @Value("\${seed}") seed: String) = CommandLineRunner {
 		log.info("Initializing: port = $port")
 
-		val host = Collections.list(NetworkInterface.getNetworkInterfaces())
-				.filter { iface -> !iface.isLoopback && iface.isUp && !iface.isVirtual && !iface.isPointToPoint}
-				.flatMap { Collections.list(it.inetAddresses) }
-                .filter { it.address.size == 4 } // must be ipv4 (4 bytes)
-                .map { it.hostAddress }
-				.firstOrNull() ?: throw Exception("Could not determine host ip")
-		repository.addNodes(listOf("http://$host:$port", seed))
+		// A method to determine the ipv4 address that we use.
+		val host: String = Collections.list(NetworkInterface.getNetworkInterfaces())
+			.filter { iface -> !iface.isLoopback && iface.isUp && !iface.isVirtual && !iface.isPointToPoint}
+			.flatMap { Collections.list(it.inetAddresses) }
+			.filter { it.address.size == 4 } // must be ipv4 (4 bytes)
+			.map { it.hostAddress }
+			.firstOrNull() ?: throw Exception("Could not determine host ip")
+
+
+		// TODO add initial nodes to the repository
 	}
 
 }
